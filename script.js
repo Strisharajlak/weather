@@ -1,31 +1,42 @@
-const apiKey = 'YOUR_OPENWEATHER_API_KEY'; // Replace with your actual API key
-const searchInput = document.getElementById('search-input');
-const searchButton = document.getElementById('search-button');
-const weatherDataDiv = document.getElementById('weather-data');
-const errorMessageDiv = document.getElementById('error-message');
-
-searchButton.addEventListener('click', async () => {
-    const city = searchInput.value.trim();
-    if (city) {
-        errorMessageDiv.innerHTML = ''; // Clear previous error messages
-        try {
-            const response = await fetch(https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric);
-            if (!response.ok) {
-                throw new Error('City not found');
-            }
-            const data = await response.json();
-            const weatherData = {
-                temperature: data.main.temp,
-                humidity: data.main.humidity,
-                conditions: data.weather[0].description,
-                icon: data.weather[0].icon,
-            };
-            renderWeatherData(weatherData);
-        } catch (error) {
-            console.error(error);
-            renderError(error.message);
-        }
-    } else {
-        renderError('Please enter a city name');
+function fetchWeather() {
+    const city = document.getElementById("city").value.trim();
+    if (!city) {
+        document.getElementById("weather").innerText = "Please enter a city.";
+        return;
     }
-});
+
+    const geoApiUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`;
+
+    fetch(geoApiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.results || data.results.length === 0) {
+                document.getElementById("weather").innerText = "City not found.";
+                return;
+            }
+
+            const lat = data.results[0].latitude;
+            const lon = data.results[0].longitude;
+
+            const weatherApiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+
+            return fetch(weatherApiUrl);
+        })
+        .then(response => response.json())
+        .then(weatherData => {
+            if (!weatherData || !weatherData.current_weather) {
+                document.getElementById("weather").innerText = "Weather data not available.";
+                return;
+            }
+
+            const temp = weatherData.current_weather.temperature;
+            const windSpeed = weatherData.current_weather.windspeed;
+            const condition = weatherData.current_weather.weathercode;
+
+            document.getElementById("weather").innerText = `🌡 Temperature: ${temp}°C | 💨 Wind Speed: ${windSpeed} km/h`;
+        })
+        .catch(error => {
+            console.error("Error fetching weather:", error);
+            document.getElementById("weather").innerText = "Error fetching weather data.";
+        });
+}
